@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Naisargik - গ্রাহক ব্যবস্থাপনা</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#166534', 
+                        secondary: '#d97706',
+                        light: '#f8fafc',
+                        dark: '#1e293b'
+                    },
+                    fontFamily: {
+                        sans: ['"Hind Siliguri"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            font-family: 'Hind Siliguri', sans-serif; 
+            background-color: #f3f4f6; 
+            scroll-behavior: smooth;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #166534;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #166534; border-radius: 3px; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen overflow-hidden flex items-center justify-center relative bg-gray-50">
+
+    <div id="global-loader" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center font-bold text-3xl shadow-lg mb-4 animate-bounce">N</div>
+        <div class="loader"></div>
+        <p class="mt-4 text-primary font-medium">লোড হচ্ছে...</p>
+    </div>
+
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-[110] flex items-center gap-3 w-[90%] md:w-auto">
+        <div id="toast-icon-container" class="p-1 rounded-full bg-emerald-500 text-white flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        </div>
+        <span id="toast-message" class="font-medium text-sm">সফলভাবে সম্পন্ন হয়েছে!</span>
+    </div>
+
+    <div id="custom-confirm-modal" class="fixed inset-0 bg-black/60 z-[120] hidden items-center justify-center backdrop-blur-sm p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center transform scale-95 transition-transform">
+            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800 mb-2" id="confirm-modal-title">নিশ্চিত করুন</h3>
+            <p class="text-sm text-gray-500 mb-6" id="confirm-modal-desc">আপনি কি এই কাজটি করতে চান?</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="window.closeConfirmModal()" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl font-bold transition-colors">না, বাতিল</button>
+                <button id="confirm-modal-btn" class="flex-1 px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 rounded-xl font-bold transition-colors">হ্যাঁ, নিশ্চিত</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-view" class="hidden w-full max-w-md p-6">
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-emerald-100">
+            <div class="bg-primary p-6 text-center flex flex-col items-center justify-center min-h-[160px]">
+                <div class="w-16 h-16 bg-white text-primary rounded-full flex items-center justify-center font-bold text-4xl shadow-lg mx-auto">N</div>
+                <h2 class="text-white mt-4 font-bold text-xl">গ্রাহক ব্যবস্থাপনা প্যানেল</h2>
+            </div>
+            <div class="p-8">
+                <form id="login-form" class="space-y-6">
+                    <div id="login-error" class="hidden bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200 text-center font-medium">ইমেইল বা পাসওয়ার্ড সঠিক নয়।</div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ইমেইল/ ইউজার আইডি</label>
+                        <input type="email" id="email" required placeholder="admin@naisargik.com" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">পাসওয়ার্ড</label>
+                        <input type="password" id="password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none">
+                    </div>
+                    <button type="submit" id="login-btn" class="w-full bg-primary hover:bg-emerald-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2">
+                        <svg id="login-spinner" class="animate-spin hidden h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span id="login-text">লগইন করুন</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-view" class="hidden w-full h-full flex flex-col bg-gray-50">
+        
+        <header class="bg-white shadow-sm border-b border-gray-200 px-4 md:px-6 py-4 flex justify-between items-center z-10 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center font-bold text-lg shadow-sm">N</div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800 leading-tight">গ্রাহক তালিকা</h1>
+                    <p class="text-xs text-gray-500 font-medium">মোট গ্রাহক: <span id="stat-customers-count" class="font-bold text-primary">০</span> জন</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="window.openCustomerModal()" class="bg-primary hover:bg-emerald-800 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    <span class="hidden sm:inline">নতুন গ্রাহক</span>
+                </button>
+                <button id="logout-btn" class="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors" title="লগআউট">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 w-full max-w-6xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                    <input type="text" id="search-customer" placeholder="নাম বা নম্বর দিয়ে খুঁজুন..." class="w-full max-w-sm px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary outline-none text-sm" onkeyup="window.filterCustomers()">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="hidden md:table-header-group">
+                            <tr class="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+                                <th class="p-4 font-medium">নাম</th>
+                                <th class="p-4 font-medium">ফোন নম্বর</th>
+                                <th class="p-4 font-medium">ঠিকানা</th>
+                                <th class="p-4 font-medium text-right">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-table-body" class="block md:table-row-group text-sm text-gray-700">
+                            </tbody>
+                    </table>
+                    <div id="no-customer-msg" class="hidden p-8 text-center text-gray-500">
+                        কোনো গ্রাহক পাওয়া যায়নি।
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="customer-modal" class="fixed inset-0 bg-black/60 z-[60] hidden items-center justify-center backdrop-blur-sm p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 id="customer-modal-title" class="font-bold text-lg text-gray-800">নতুন গ্রাহক যোগ করুন</h3>
+                <button onclick="window.closeCustomerModal()" class="text-gray-400 hover:text-red-500 p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <form id="customer-form" class="p-5 space-y-4" onsubmit="event.preventDefault(); window.saveCustomerData();">
+                <input type="hidden" id="customer-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">গ্রাহকের নাম *</label>
+                    <input type="text" id="customer-name" required placeholder="নাম লিখুন" class="w-full px-3 py-2 border rounded-lg focus:ring-primary focus:border-primary outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ফোন নম্বর *</label>
+                    <input type="text" id="customer-phone" required placeholder="01XXXXXXXXX" class="w-full px-3 py-2 border rounded-lg focus:ring-primary focus:border-primary outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">বিস্তারিত ঠিকানা</label>
+                    <textarea id="customer-address" rows="3" placeholder="ঠিকানা লিখুন" class="w-full px-3 py-2 border rounded-lg focus:ring-primary focus:border-primary outline-none"></textarea>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="window.closeCustomerModal()" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">বাতিল</button>
+                    <button type="submit" id="customer-submit-btn" class="flex-1 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-emerald-800 transition-colors">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, deleteDoc, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTF9qOouM1d6SwfBqI0n7ytQRr5ROEj0k",
+            authDomain: "khati-khabar.firebaseapp.com",
+            projectId: "khati-khabar",
+            storageBucket: "khati-khabar.firebasestorage.app",
+            messagingSenderId: "935147333240",
+            appId: "1:935147333240:web:bc0cd8a370d22ee678ef8d"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let allCustomersList = [];
+
+        /* ======================== UI Helpers ======================== */
+        window.showNotification = function(message, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            document.getElementById('toast-icon-container').className = isError ? "p-1 rounded-full bg-red-500 text-white flex-shrink-0" : "p-1 rounded-full bg-emerald-500 text-white flex-shrink-0";
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+            setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0', 'pointer-events-none'); }, 3000);
+        }
+
+        window.confirmAction = function(title, desc, callback) {
+            document.getElementById('confirm-modal-title').innerText = title;
+            document.getElementById('confirm-modal-desc').innerText = desc;
+            const modal = document.getElementById('custom-confirm-modal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            document.getElementById('confirm-modal-btn').onclick = function() { window.closeConfirmModal(); callback(); };
+        }
+        window.closeConfirmModal = () => document.getElementById('custom-confirm-modal').classList.replace('flex', 'hidden');
+
+        /* ======================== Load Data & Listeners ======================== */
+        onAuthStateChanged(auth, (user) => {
+            setTimeout(() => { document.getElementById('global-loader').classList.add('hidden'); }, 500);
+            if (user) {
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                document.body.classList.remove('justify-center', 'items-center');
+                loadCustomersData();
+            } else {
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('dashboard-view').classList.add('hidden');
+                document.body.classList.add('justify-center', 'items-center');
+            }
+        });
+
+        function loadCustomersData() {
+            onSnapshot(collection(db, "customers"), (snapshot) => {
+                document.getElementById('stat-customers-count').innerText = snapshot.docs.length;
+                allCustomersList = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    data.id = docSnap.id;
+                    allCustomersList.push(data);
+                });
+                
+                // Sort by newest first (assuming createdAt exists)
+                allCustomersList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+                renderCustomers(allCustomersList);
+            });
+        }
+
+        function renderCustomers(list) {
+            const tableBody = document.getElementById('customers-table-body');
+            const noMsg = document.getElementById('no-customer-msg');
+            tableBody.innerHTML = '';
+            
+            if(list.length === 0) {
+                noMsg.classList.remove('hidden');
+            } else {
+                noMsg.classList.add('hidden');
+                list.forEach(data => {
+                    tableBody.innerHTML += `
+                        <tr class="bg-white block md:table-row border border-gray-200 md:border-b md:border-t-0 md:border-x-0 md:border-gray-100 hover:bg-gray-50 transition-colors mb-3 md:mb-0 rounded-xl md:rounded-none p-3 md:p-0">
+                            <td class="block md:table-cell p-2 md:p-4 font-bold text-gray-800">
+                                <div class="flex justify-between md:block"><span class="md:hidden text-xs text-gray-500 font-normal">নাম:</span>${data.name}</div>
+                            </td>
+                            <td class="block md:table-cell p-2 md:p-4">
+                                <div class="flex justify-between md:block"><span class="md:hidden text-xs text-gray-500 font-normal">ফোন:</span><a href="tel:${data.phone}" class="text-primary font-medium hover:underline">${data.phone}</a></div>
+                            </td>
+                            <td class="block md:table-cell p-2 md:p-4 text-sm text-gray-600">
+                                <div class="flex justify-between md:block"><span class="md:hidden text-xs text-gray-500 font-normal shrink-0">ঠিকানা:</span><span class="line-clamp-2 text-right md:text-left">${data.address || '---'}</span></div>
+                            </td>
+                            <td class="block md:table-cell p-2 md:p-4 text-right border-t border-gray-100 md:border-none mt-2 md:mt-0 pt-3 md:pt-4">
+                                <div class="flex justify-end gap-2">
+                                    <button class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-blue-200" onclick="window.editCustomer('${data.id}')">এডিট</button>
+                                    <button class="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-red-200" onclick="window.deleteCustomer('${data.id}')">মুছুন</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        window.filterCustomers = function() {
+            const query = document.getElementById('search-customer').value.toLowerCase();
+            const filtered = allCustomersList.filter(c => 
+                (c.name && c.name.toLowerCase().includes(query)) || 
+                (c.phone && c.phone.includes(query))
+            );
+            renderCustomers(filtered);
+        }
+
+        /* ======================== Add / Edit / Delete Customer ======================== */
+        window.openCustomerModal = function() {
+            document.getElementById('customer-form').reset();
+            document.getElementById('customer-id').value = '';
+            document.getElementById('customer-modal-title').innerText = "নতুন গ্রাহক যোগ করুন";
+            document.getElementById('customer-submit-btn').innerText = "সেভ করুন";
+            document.getElementById('customer-modal').classList.replace('hidden', 'flex');
+        }
+
+        window.closeCustomerModal = function() {
+            document.getElementById('customer-modal').classList.replace('flex', 'hidden');
+        }
+
+        window.editCustomer = function(id) {
+            const customer = allCustomersList.find(c => c.id === id);
+            if(customer) {
+                document.getElementById('customer-id').value = customer.id;
+                document.getElementById('customer-name').value = customer.name || '';
+                document.getElementById('customer-phone').value = customer.phone || '';
+                document.getElementById('customer-address').value = customer.address || '';
+                
+                document.getElementById('customer-modal-title').innerText = "গ্রাহকের তথ্য এডিট করুন";
+                document.getElementById('customer-submit-btn').innerText = "আপডেট করুন";
+                document.getElementById('customer-modal').classList.replace('hidden', 'flex');
+            }
+        }
+
+        window.saveCustomerData = async function() {
+            if(!auth.currentUser) return;
+            
+            const idToEdit = document.getElementById('customer-id').value;
+            const name = document.getElementById('customer-name').value.trim();
+            const phone = document.getElementById('customer-phone').value.trim();
+            const address = document.getElementById('customer-address').value.trim();
+            
+            // Generate standard ID from phone (like main admin panel does)
+            const formattedPhone = phone.replace(/[\s\-\(\)\+]/g, ''); 
+            const docId = idToEdit || formattedPhone;
+
+            const customerData = {
+                name: name,
+                phone: phone,
+                address: address,
+                updatedAt: new Date().toISOString()
+            };
+
+            try {
+                if(!idToEdit) {
+                    customerData.createdAt = new Date().toISOString();
+                }
+                
+                // setDoc with merge handles both create and update flawlessly
+                await setDoc(doc(db, "customers", docId), customerData, { merge: true });
+                
+                window.showNotification(idToEdit ? "গ্রাহকের তথ্য আপডেট হয়েছে!" : "নতুন গ্রাহক যুক্ত করা হয়েছে!");
+                window.closeCustomerModal();
+            } catch(e) {
+                window.showNotification("সংরক্ষণ করতে সমস্যা হয়েছে", true);
+            }
+        }
+
+        window.deleteCustomer = function(id) { 
+            window.confirmAction("গ্রাহক মুছুন", "আপনি কি নিশ্চিত যে এই গ্রাহকের তথ্য ডাটাবেজ থেকে মুছে ফেলতে চান?", async () => { 
+                try {
+                    await deleteDoc(doc(db, "customers", id)); 
+                    window.showNotification("গ্রাহক মুছে ফেলা হয়েছে!"); 
+                } catch(e) {
+                    window.showNotification("ডিলিট করতে সমস্যা হয়েছে", true);
+                }
+            }); 
+        }
+
+        /* ======================== Auth Listeners ======================== */
+        document.getElementById('login-form').addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            const loginBtn = document.getElementById('login-btn'); 
+            const loginSpinner = document.getElementById('login-spinner'); 
+            const loginText = document.getElementById('login-text'); 
+            const loginError = document.getElementById('login-error'); 
+            loginBtn.disabled = true; loginSpinner.classList.remove('hidden'); loginText.innerText = "অপেক্ষা করুন..."; loginError.classList.add('hidden'); 
+            try { 
+                await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); 
+                window.showNotification("সফলভাবে লগইন করা হয়েছে!"); 
+                loginBtn.disabled = false; loginSpinner.classList.add('hidden'); loginText.innerText = "লগইন করুন"; 
+            } catch (error) { 
+                loginError.classList.remove('hidden'); loginBtn.disabled = false; loginSpinner.classList.add('hidden'); loginText.innerText = "লগইন করুন"; 
+            } 
+        });
+        
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+    </script>
+</body>
+</html>
